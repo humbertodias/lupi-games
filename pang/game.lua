@@ -111,15 +111,56 @@ end
 
 local function pal()
   for i = 1, #Palette do
-    ui.palset(i - 1, Palette[i])
+    local c = Palette[i]
+    if type(c) == "number" then
+      ui.palset(i - 1, c)
+    end
   end
 end
 
-local Img = (type(Sprites) == "table" and Sprites.img) or {}
+-- Cassete sozinho: Sprites.img.title
+-- Colecao lupi-games (web): Sprites.pang.img.title
+local function is_spr(t)
+  return type(t) == "table" and type(t.path) == "string" and type(t.width) == "number"
+end
+
+local function spr_exists(t)
+  if not is_spr(t) then return false end
+  local f = io.open(t.path, "rb")
+  if not f then return false end
+  f:close()
+  return true
+end
+
+local function find_img()
+  if type(Sprites) ~= "table" then return nil end
+  if is_spr((Sprites.img or {}).title) then return Sprites.img end
+  if Sprites.pang and is_spr((Sprites.pang.img or {}).title) then
+    return Sprites.pang.img
+  end
+  for _, v in pairs(Sprites) do
+    if type(v) == "table" and is_spr((v.img or {}).title) then
+      return v.img
+    end
+  end
+  return Sprites.img
+end
+
+local Img = find_img() or {}
 
 local function asset(name, w, h)
-  if Img[name] then return Img[name] end
-  return { path = DIR .. "/img/" .. name, width = w, height = h, ntiles = 1 }
+  local from_sprites = Img[name]
+  if spr_exists(from_sprites) then return from_sprites end
+  local candidates = {
+    from_sprites,
+    { path = DIR .. "/img/" .. name, width = w, height = h, ntiles = 1 },
+    { path = "pang/img/" .. name, width = w, height = h, ntiles = 1 },
+    { path = "img/" .. name, width = w, height = h, ntiles = 1 },
+  }
+  for i = 1, #candidates do
+    if spr_exists(candidates[i]) then return candidates[i] end
+  end
+  return nil
 end
 
 local SPR = {
@@ -193,19 +234,19 @@ local function sy(y)
 end
 
 local function blit(ref, x, y)
-  if not ref or not ui.spr then return false end
-  ui.spr(ref, sx(x), sy(y))
-  return true
+  if not is_spr(ref) or not ui.spr then return false end
+  local ok = pcall(ui.spr, ref, sx(x), sy(y))
+  return ok
 end
 
 local function blit_clip(ref, x, y, w, h)
-  if not ref or not ui.spr then return false end
+  if not is_spr(ref) or not ui.spr then return false end
   if ui.clip then
     ui.clip(sx(x), sy(y), math.max(1, w), math.max(1, h))
   end
-  ui.spr(ref, sx(x), sy(y))
+  local ok = pcall(ui.spr, ref, sx(x), sy(y))
   if ui.clip then ui.clip() end
-  return true
+  return ok
 end
 
 local function fond_for(level)
