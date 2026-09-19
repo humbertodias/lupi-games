@@ -1,0 +1,1 @@
+# lupi-games — menu de cassetes. Cada pasta com game.lua aparece na lista.

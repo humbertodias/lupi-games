@@ -1,0 +1,1 @@
+# joytest — sem bitmaps; desenho só com primitivas da API Lupi.
