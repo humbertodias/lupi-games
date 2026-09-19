@@ -77,7 +77,7 @@ end
 
 local ROOT = script_dir()
 
-local games = { "joytest", "kof", "rain", "snake" }
+local games = { "joytest", "kof", "pong", "rain", "snake" }
 local cursor = 1
 local scroll = 0
 local playing = false
