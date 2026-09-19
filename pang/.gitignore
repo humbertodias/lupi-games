@@ -1,0 +1,9 @@
+# saida do lupi-codec / ImageMagick
+.build/
+palette.lua
+lupi_manifest.txt
+sprites.lua
+
+# bitmaps indexados (sem extensao), gerados ao lado dos PNG
+img/*
+!img/*.png
