@@ -1,6 +1,6 @@
 -- ============================================
 -- LUPI GAMES — menu de cassetes
--- Lista pastas com game.lua e carrega o mini-game.
+-- Carrega os mini-games do array fixo abaixo.
 -- Ombro L (tecla G) volta ao menu. ESC fecha a janela do emulador.
 -- ============================================
 
@@ -63,21 +63,6 @@ local function want_confirm()
   return pressed(CONFIRM_A) or pressed(CONFIRM_B)
 end
 
-local function file_exists(path)
-  if io and io.open then
-    local f = io.open(path, "r")
-    if f then
-      f:close()
-      return true
-    end
-  end
-  if loadfile then
-    local chunk = loadfile(path)
-    return chunk ~= nil
-  end
-  return false
-end
-
 local function script_dir()
   if debug and debug.getinfo then
     local src = debug.getinfo(1, "S").source
@@ -92,111 +77,7 @@ end
 
 local ROOT = script_dir()
 
-local function skip_name(name)
-  if not name or name == "" then return true end
-  if name == "." or name == ".." then return true end
-  if name:sub(1, 1) == "." then return true end
-  return false
-end
-
-local function collect_from_iter(add)
-  local names = {}
-  add(function(name)
-    if not skip_name(name) then
-      names[#names + 1] = name
-    end
-  end)
-  return names
-end
-
-local function list_dir(path)
-  if lfs and lfs.dir then
-    local ok, names = pcall(function()
-      return collect_from_iter(function(add)
-        for name in lfs.dir(path) do
-          add(name)
-        end
-      end)
-    end)
-    if ok and names and #names > 0 then return names end
-  end
-
-  if fs and fs.list then
-    local ok, listed = pcall(fs.list, path)
-    if ok and type(listed) == "table" then
-      local names = {}
-      for i = 1, #listed do
-        if not skip_name(listed[i]) then
-          names[#names + 1] = listed[i]
-        end
-      end
-      if #names > 0 then return names end
-    end
-  end
-
-  if ui and ui.listdir then
-    local ok, listed = pcall(ui.listdir, path)
-    if ok and type(listed) == "table" then
-      local names = {}
-      for i = 1, #listed do
-        if not skip_name(listed[i]) then
-          names[#names + 1] = listed[i]
-        end
-      end
-      if #names > 0 then return names end
-    end
-  end
-
-  if io and io.popen then
-    local quoted = path:gsub('"', '\\"')
-    local ok, names = pcall(function()
-      local pipe = io.popen('ls -1 "' .. quoted .. '"')
-      if not pipe then return {} end
-      local out = collect_from_iter(function(add)
-        for line in pipe:lines() do
-          add(line)
-        end
-      end)
-      pipe:close()
-      return out
-    end)
-    if ok and names and #names > 0 then return names end
-  end
-
-  if os and os.execute and io and io.lines and os.tmpname then
-    local tmp = os.tmpname()
-    local quoted = path:gsub('"', '\\"')
-    os.execute('ls -1 "' .. quoted .. '" > "' .. tmp .. '" 2>/dev/null')
-    local names = {}
-    local ok = pcall(function()
-      for line in io.lines(tmp) do
-        if not skip_name(line) then
-          names[#names + 1] = line
-        end
-      end
-    end)
-    if os.remove then pcall(os.remove, tmp) end
-    if ok and #names > 0 then return names end
-  end
-
-  return {}
-end
-
-local function scan_games()
-  local games = {}
-  local entries = list_dir(ROOT)
-  for i = 1, #entries do
-    local name = entries[i]
-    local game_path = ROOT .. "/" .. name .. "/game.lua"
-    if file_exists(game_path) then
-      games[#games + 1] = name
-    end
-  end
-  table.sort(games)
-  return games
-end
-
-local games = scan_games()
+local games = { "joytest", "kof", "rain", "snake" }
 local cursor = 1
 local scroll = 0
 local playing = false
@@ -281,7 +162,6 @@ local function return_to_menu()
   end
   apply_menu_palette()
   reset_view()
-  games = scan_games()
   clamp_cursor()
 end
 

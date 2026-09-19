@@ -1,0 +1,103 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout game
+        uses: actions/checkout@v7
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.4 zip unzip imagemagick
+
+      - name: Checkout lupi-codec
+        uses: actions/checkout@v7
+        with:
+          repository: lupi-org-br/lupi-codec
+          ref: 1.0.0
+          path: .lupi-build/lupi-codec
+
+      - name: Checkout lupinho
+        uses: actions/checkout@v7
+        with:
+          repository: lupi-org-br/lupinho
+          ref: 1.1.0
+          path: .lupi-build/lupinho
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+
+      - name: Encode game
+        run: |
+          set -euo pipefail
+          rm -f .lupi-build/lupi-codec/bit.lua
+          mkdir -p .lupi-build/lupi-src .lupi-build/codec-out
+          rsync -a \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.lupi-build/' \
+            --exclude '.DS_Store' \
+            ./ .lupi-build/lupi-src/
+          cd .lupi-build/lupi-codec
+          lua5.4 run.lua "$GITHUB_WORKSPACE/.lupi-build/lupi-src" "$GITHUB_WORKSPACE/.lupi-build/codec-out"
+
+      - name: Package .lupi
+        run: |
+          set -euo pipefail
+          latest="$(ls -t .lupi-build/codec-out/releases | head -1)"
+          test -n "$latest"
+          (cd ".lupi-build/codec-out/releases/$latest" && zip -r "$GITHUB_WORKSPACE/.lupi-build/jogo.lupi" .)
+
+      - name: Build webgame
+        run: |
+          set -euo pipefail
+          make -C .lupi-build/lupinho/src web-game GAME_PATH="$GITHUB_WORKSPACE/.lupi-build/jogo.lupi"
+
+      - name: Assemble site
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp -a .lupi-build/lupinho/dist/webgame/. _site/
+          cp _site/game.html _site/index.html
+          touch _site/.nojekyll
+          test -s _site/index.html
+          test -s _site/game.js
+          test -s _site/game.wasm
+          test -s _site/game.data
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
