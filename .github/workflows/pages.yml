@@ -48,7 +48,6 @@ jobs:
       - name: Encode game
         run: |
           set -euo pipefail
-          rm -f .lupi-build/lupi-codec/bit.lua
           mkdir -p .lupi-build/lupi-src .lupi-build/codec-out
           rsync -a \
             --exclude '.git/' \
