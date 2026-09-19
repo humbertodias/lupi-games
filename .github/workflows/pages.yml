@@ -48,14 +48,17 @@ jobs:
       - name: Encode game
         run: |
           set -euo pipefail
+          make -C pang stage CODEC="$GITHUB_WORKSPACE/.lupi-build/lupi-codec"
           mkdir -p .lupi-build/lupi-src .lupi-build/codec-out
           rsync -a \
             --exclude '.git/' \
             --exclude '.github/' \
             --exclude '.lupi-build/' \
+            --exclude 'pang/.build/' \
             --exclude 'fullscreen.css' \
             --exclude '.DS_Store' \
             ./ .lupi-build/lupi-src/
+          cp -f pang/.build/src/img/*.png .lupi-build/lupi-src/pang/img/
           cd .lupi-build/lupi-codec
           lua5.4 run.lua "$GITHUB_WORKSPACE/.lupi-build/lupi-src" "$GITHUB_WORKSPACE/.lupi-build/codec-out"
 

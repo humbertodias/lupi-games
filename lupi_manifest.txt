@@ -1,1 +1,1 @@
-# lupi-games — menu de cassetes. Os jogos do array fixo em game.lua aparecem na lista.
+# lupi-games — menu de cassetes. Cada pasta com game.lua aparece na lista.

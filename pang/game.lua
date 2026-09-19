@@ -119,22 +119,16 @@ local function pal()
 end
 
 -- Cassete sozinho: Sprites.img.title
--- Colecao lupi-games (web): Sprites.pang.img.title
+-- Colecao lupi-games (web, /loaded_game): Sprites.pang.img.title
 local function is_spr(t)
-  return type(t) == "table" and type(t.path) == "string" and type(t.width) == "number"
-end
-
-local function spr_exists(t)
-  if not is_spr(t) then return false end
-  local f = io.open(t.path, "rb")
-  if not f then return false end
-  f:close()
-  return true
+  return type(t) == "table" and type(t.path) == "string" and t.width ~= nil and t.height ~= nil
 end
 
 local function find_img()
   if type(Sprites) ~= "table" then return nil end
-  if is_spr((Sprites.img or {}).title) then return Sprites.img end
+  if is_spr((Sprites.img or {}).title) or is_spr((Sprites.img or {}).player_r1) then
+    return Sprites.img
+  end
   if Sprites.pang and is_spr((Sprites.pang.img or {}).title) then
     return Sprites.pang.img
   end
@@ -143,24 +137,22 @@ local function find_img()
       return v.img
     end
   end
-  return Sprites.img
+  return nil
 end
 
 local Img = find_img() or {}
 
 local function asset(name, w, h)
-  local from_sprites = Img[name]
-  if spr_exists(from_sprites) then return from_sprites end
-  local candidates = {
-    from_sprites,
-    { path = DIR .. "/img/" .. name, width = w, height = h, ntiles = 1 },
-    { path = "pang/img/" .. name, width = w, height = h, ntiles = 1 },
-    { path = "img/" .. name, width = w, height = h, ntiles = 1 },
-  }
-  for i = 1, #candidates do
-    if spr_exists(candidates[i]) then return candidates[i] end
+  if is_spr(Img[name]) then return Img[name] end
+  local rel = "pang/img/" .. name
+  local path
+  if DIR:sub(1, 1) == "/" or DIR:match("^%a:[/\\]") then
+    path = DIR .. "/img/" .. name
+  else
+    -- web: MEMFS em /loaded_game; debug.getinfo as vezes so tem caminho relativo
+    path = "/loaded_game/" .. rel
   end
-  return nil
+  return { path = path, width = w, height = h, ntiles = 1 }
 end
 
 local SPR = {
